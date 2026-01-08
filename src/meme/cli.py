@@ -100,3 +100,124 @@ Environment Variables:
     except Exception as e:
         print(f"Server error: {e}", file=sys.stderr)
         return 1
+
+
+def index_main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Build vector index from meme analysis data.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    meme-index meme0_100_analysis.json --output meme_index.npz
+        """,
+    )
+    parser.add_argument("input", help="Input analysis JSON file")
+    parser.add_argument("--output", "-o", default="meme_index.npz", help="Output index file (default: meme_index.npz)")
+
+    args = parser.parse_args()
+
+    try:
+        from meme.rag import build_index
+        build_index(args.input, args.output)
+        return 0
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
+def search_main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Search similar memes using text query.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    meme-search "开心搞笑的表情" --index meme_index.npz
+    meme-search "愤怒吐槽" --index meme_index.npz --top-k 5
+        """,
+    )
+    parser.add_argument("query", help="Search query text")
+    parser.add_argument("--index", "-i", required=True, help="Path to index file (.npz)")
+    parser.add_argument("--top-k", "-k", type=int, default=3, help="Number of results (default: 3)")
+
+    args = parser.parse_args()
+
+    try:
+        from meme.rag import search_memes
+        import json
+        results = search_memes(args.query, args.index, args.top_k)
+        for i, meme in enumerate(results, 1):
+            print(f"\n[{i}] {meme['name']} (score: {meme['score']:.4f})")
+            print(f"    URL: {meme['url']}")
+            if "analysis" in meme:
+                emotion = meme["analysis"].get("所代表情绪", "")
+                if isinstance(emotion, str) and len(emotion) > 100:
+                    emotion = emotion[:100] + "..."
+                print(f"    情绪: {emotion}")
+        return 0
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
+def match_main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Analyze image and find similar memes.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    meme-match https://example.com/image.jpg --index meme_index.npz
+    meme-match image.jpg --index meme_index.npz --image-mode data
+
+Environment Variables:
+    ARK_API_KEY     Required. API key for Doubao API.
+        """,
+    )
+    parser.add_argument("image", help="Image URL or path")
+    parser.add_argument("--index", "-i", required=True, help="Path to index file (.npz)")
+    parser.add_argument("--top-k", "-k", type=int, default=3, help="Number of results (default: 3)")
+    parser.add_argument("--image-mode", choices=["remote", "data"], default="remote", help="Use remote URL or embed as base64 (default: remote)")
+    parser.add_argument("--api-key", help="API key (defaults to ARK_API_KEY env var)")
+
+    args = parser.parse_args()
+
+    try:
+        from meme.client import DoubaoClient
+        from meme.config import APIConfig
+        from meme.rag import MemeRAG
+        from meme.analyze_memes import fetch_as_data_url
+        import json
+
+        config = APIConfig.from_env(api_key_override=args.api_key)
+        client = DoubaoClient(config)
+
+        image_url = args.image
+        if args.image_mode == "data":
+            image_url = fetch_as_data_url(args.image, 15.0)
+
+        print("Analyzing image...")
+        response = client.analyze_image(image_url)
+        analysis = client.extract_analysis(response)
+
+        print("\n=== Image Analysis ===")
+        print(json.dumps(analysis, ensure_ascii=False, indent=2))
+
+        rag = MemeRAG()
+        rag.load_index(args.index)
+        matches = rag.find_similar_from_analysis(analysis, args.top_k)
+
+        print("\n=== Similar Memes ===")
+        for i, meme in enumerate(matches, 1):
+            print(f"\n[{i}] {meme['name']} (score: {meme['score']:.4f})")
+            print(f"    URL: {meme['url']}")
+            design = meme.get("analysis", {}).get("设计灵感", "")
+            if isinstance(design, str) and len(design) > 150:
+                design = design[:150] + "..."
+            print(f"    设计灵感: {design}")
+
+        return 0
+    except ConfigurationError as e:
+        print(f"Configuration error: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1

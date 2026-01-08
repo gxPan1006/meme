@@ -7,4 +7,5 @@ __all__ = [
     "config",
     "exceptions",
     "filter_static_meme",
+    "rag",
 ]

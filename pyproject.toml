@@ -5,11 +5,18 @@ description = "Meme image analysis tool using Doubao API"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
+dependencies = [
+    "sentence-transformers>=2.2.0",
+    "numpy>=1.20.0",
+]
 
 [project.scripts]
 meme-analyze = "meme.cli:analyze_main"
 meme-filter = "meme.cli:filter_main"
 meme-server = "meme.cli:server_main"
+meme-index = "meme.cli:index_main"
+meme-search = "meme.cli:search_main"
+meme-match = "meme.cli:match_main"
 
 [build-system]
 requires = ["setuptools>=64"]
