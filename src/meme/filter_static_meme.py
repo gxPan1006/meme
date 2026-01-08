@@ -1,38 +1,32 @@
-#!/usr/bin/env python3
 import json
 import sys
-from typing import Any, Dict, List
+from typing import Any
 
 
-def usage() -> None:
-    cmd = sys.argv[0].rsplit("/", 1)[-1]
-    print(f"Usage: {cmd} <input.json> <output.json>", file=sys.stderr)
-
-
-def is_gif_entry(entry: Dict[str, Any]) -> bool:
+def is_gif_entry(entry: dict[str, Any]) -> bool:
     name = str(entry.get("name", "")).lower()
     url = str(entry.get("url", "")).lower()
     return name.endswith(".gif") or url.endswith(".gif")
 
 
-def main() -> int:
-    if len(sys.argv) != 3:
-        usage()
+def run_filter(input_path: str, output_path: str) -> int:
+    try:
+        with open(input_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print(f"Error: Input file not found: {input_path}", file=sys.stderr)
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON in input file: {e}", file=sys.stderr)
         return 1
 
-    input_path = sys.argv[1]
-    output_path = sys.argv[2]
-
-    with open(input_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    data_array: List[Dict[str, Any]]
+    data_array: list[dict[str, Any]]
     if isinstance(data, list):
         data_array = data
     elif isinstance(data, dict) and isinstance(data.get("data"), list):
         data_array = data["data"]
     else:
-        print("Error: expected an array or an object with data array.", file=sys.stderr)
+        print("Error: Input must be a JSON array or an object with 'data' array.", file=sys.stderr)
         return 1
 
     filtered = [entry for entry in data_array if not is_gif_entry(entry)]
@@ -48,6 +42,15 @@ def main() -> int:
 
     print(f"Wrote {len(filtered)} static entries to {output_path}")
     return 0
+
+
+def main() -> int:
+    if len(sys.argv) != 3:
+        cmd = sys.argv[0].rsplit("/", 1)[-1]
+        print(f"Usage: {cmd} <input.json> <output.json>", file=sys.stderr)
+        return 1
+
+    return run_filter(sys.argv[1], sys.argv[2])
 
 
 if __name__ == "__main__":

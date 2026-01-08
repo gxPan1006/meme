@@ -1,0 +1,19 @@
+[project]
+name = "meme-analyzer"
+version = "0.1.0"
+description = "Meme image analysis tool using Doubao API"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+[project.scripts]
+meme-analyze = "meme.cli:analyze_main"
+meme-filter = "meme.cli:filter_main"
+meme-server = "meme.cli:server_main"
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
