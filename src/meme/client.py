@@ -10,7 +10,13 @@ class DoubaoClient:
     def __init__(self, config: APIConfig) -> None:
         self.config = config
 
-    def analyze_image(self, image_url: str) -> dict[str, Any]:
+    def analyze_image(
+        self,
+        image_url: str,
+        prompt_override: str | None = None,
+        extra_text: str | None = None,
+    ) -> dict[str, Any]:
+        prompt = prompt_override or self.config.prompt
         payload = {
             "model": self.config.model,
             "messages": [
@@ -18,11 +24,15 @@ class DoubaoClient:
                     "role": "user",
                     "content": [
                         {"type": "image_url", "image_url": {"url": image_url}},
-                        {"type": "text", "text": self.config.prompt},
+                        {"type": "text", "text": prompt},
                     ],
                 }
             ],
         }
+        if extra_text:
+            payload["messages"][0]["content"].append(
+                {"type": "text", "text": f"用户需求: {extra_text}"}
+            )
 
         cmd = [
             "curl",
@@ -67,3 +77,51 @@ class DoubaoClient:
                 return {"raw": content}
 
         return {"raw": content}
+
+    def generate_image(
+        self,
+        prompt: str,
+        size: str = "1920x1920",
+        image_url: str | None = None,
+    ) -> dict[str, Any]:
+        payload = {
+            "model": "doubao-seedream-4-5-251128",
+            "prompt": prompt,
+            "sequential_image_generation": "disabled",
+            "response_format": "url",
+            "size": size,
+            "stream": False,
+            "watermark": True,
+        }
+        if image_url:
+            payload["image"] = image_url
+
+        api_url = "https://ark.cn-beijing.volces.com/api/v3/images/generations"
+
+        cmd = [
+            "curl",
+            "-sS",
+            api_url,
+            "-H",
+            "Content-Type: application/json",
+            "-H",
+            f"Authorization: Bearer {self.config.api_key}",
+            "-d",
+            json.dumps(payload, ensure_ascii=True),
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            raise APIError(
+                f"Image generation failed: {result.stderr.strip() or 'curl failed'}",
+                response=result.stderr,
+            )
+
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            raise APIError(
+                f"Invalid JSON response: {e}",
+                response=result.stdout[:500],
+            ) from e

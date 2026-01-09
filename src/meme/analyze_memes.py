@@ -8,7 +8,7 @@ from typing import Any
 
 from meme.client import DoubaoClient
 from meme.config import APIConfig
-from meme.exceptions import ConfigurationError, ImageFetchError
+from meme.exceptions import ConfigurationError
 
 
 def load_input(path: str) -> list[dict[str, Any]]:
@@ -67,8 +67,8 @@ def fetch_as_data_url(url: str, timeout: float) -> str:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             content = resp.read()
             mime = resp.headers.get_content_type() or guess_mime_type(url)
-    except Exception as e:
-        raise ImageFetchError(f"Failed to fetch image: {e}", url=url) from e
+    except Exception as exc:
+        raise RuntimeError(f"Failed to fetch image: {exc}") from exc
 
     encoded = base64.b64encode(content).decode("ascii")
     return f"data:{mime};base64,{encoded}"

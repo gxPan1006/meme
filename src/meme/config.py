@@ -1,12 +1,23 @@
 import os
 from dataclasses import dataclass
 
+from dotenv import load_dotenv
+
 from meme.exceptions import ConfigurationError
+
+
+load_dotenv()
 
 
 DEFAULT_API_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
 DEFAULT_MODEL = "doubao-seed-1-8-251228"
-DEFAULT_PROMPT = "通过分析给出这个表情包的：所代表情绪、使用场景、设计灵感，最终以json的格式返回"
+DEFAULT_PROMPT = (
+    "请分析这个表情包并返回JSON，包含字段：所代表情绪、使用场景、设计灵感。"
+    "只输出JSON，不要附加解释或Markdown。"
+)
+DEFAULT_INSTRUCT_PROMPT = (
+    "请根据此图片和用户的需求给出一个表情包的生成策略，纯文本，以便后续以此策略去设计表情包，包含字段：所代表情绪、使用场景、设计灵感。"
+)
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 
