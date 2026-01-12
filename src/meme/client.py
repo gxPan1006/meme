@@ -83,6 +83,7 @@ class DoubaoClient:
         prompt: str,
         size: str = "1920x1920",
         image_url: str | None = None,
+        images: list[str] | None = None,
     ) -> dict[str, Any]:
         payload = {
             "model": "doubao-seedream-4-5-251128",
@@ -93,7 +94,9 @@ class DoubaoClient:
             "stream": False,
             "watermark": True,
         }
-        if image_url:
+        if images:
+            payload["image"] = images
+        elif image_url:
             payload["image"] = image_url
 
         api_url = "https://ark.cn-beijing.volces.com/api/v3/images/generations"

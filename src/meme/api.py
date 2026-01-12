@@ -166,6 +166,7 @@ class GenerateRequest(BaseModel):
     download_timeout: float = 15.0
     text: str | None = None
     size: str = "1920x1920"
+    need_ref: bool = True
     api_key: str | None = None
 
 
@@ -215,11 +216,23 @@ async def generate(req: GenerateRequest) -> dict[str, Any]:
 
         log(f"Step 3: Generating new meme with prompt: {design_inspiration[:50]}...")
         safe_size = normalize_size(req.size)
-        gen_response = client.generate_image(
-            prompt=design_inspiration,
-            image_url=image_url,
-            size=safe_size,
-        )
+        if req.need_ref:
+            prompt = (
+                f"可参考的设计灵感：{design_inspiration}\n\n"
+                "结合参考的表情包(图一)和设计灵感，基于图二去设计一个新的表情包"
+            )
+            images = [best_match["url"], image_url]
+            gen_response = client.generate_image(
+                prompt=prompt,
+                images=images,
+                size=safe_size,
+            )
+        else:
+            gen_response = client.generate_image(
+                prompt=design_inspiration,
+                image_url=image_url,
+                size=safe_size,
+            )
 
         if "error" in gen_response:
             error_msg = gen_response["error"].get("message", str(gen_response["error"]))
